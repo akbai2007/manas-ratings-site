@@ -332,7 +332,7 @@ async function loadDepartmentDetail(id){
     return `<div class="state-msg">Направление не найдено.</div>`;
   }
 
-  const {data: applicants, error: appErr} = await supabase
+  const {data: applicants, error: appErr} = await sb
     .from("applicants").select("*").eq("department_id", id).order("rank", {ascending:true, nullsFirst:false});
 
   const regNumbers = (applicants || []).map(a => a.reg_number);
