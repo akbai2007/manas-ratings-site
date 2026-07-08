@@ -265,7 +265,7 @@
 <script>
 const SUPABASE_URL = "https://ilxvogaomhskphicljdv.supabase.co";
 const SUPABASE_KEY = "sb_publishable_TdOUCAG3Ayj-LjLQrZHYQA_62m7VnnS";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const PHOTO_BASE = "https://abiturient.manas.edu.kg/page/uploads/photo/";
 
@@ -288,7 +288,7 @@ function escapeHtml(str){
 }
 
 async function loadDepartments(){
-  const {data, error} = await supabase.from("departments").select("*").order("faculty").order("direction");
+  const {data, error} = await sb.from("departments").select("*").order("faculty").order("direction");
   if(error){ console.error(error); return []; }
   departmentsCache = data;
   return data;
@@ -327,7 +327,7 @@ function renderHome(departments){
 }
 
 async function loadDepartmentDetail(id){
-  const {data: dep, error: depErr} = await supabase.from("departments").select("*").eq("id", id).single();
+  const {data: dep, error: depErr} = await sb.from("departments").select("*").eq("id", id).single();
   if(depErr || !dep){
     return `<div class="state-msg">Направление не найдено.</div>`;
   }
@@ -338,7 +338,7 @@ async function loadDepartmentDetail(id){
   const regNumbers = (applicants || []).map(a => a.reg_number);
   let photosMap = {};
   if(regNumbers.length){
-    const {data: photos} = await supabase.from("applicant_photos").select("*").in("reg_number", regNumbers);
+    const {data: photos} = await sb.from("applicant_photos").select("*").in("reg_number", regNumbers);
     (photos || []).forEach(p => photosMap[p.reg_number] = p);
   }
 
