@@ -354,6 +354,7 @@ function detectCategory(scoreKey){
   if(k.includes("гуманитар")) return "ГУМ";
   if(k.includes("естественно")) return "ЕСТ";
   if(k.includes("общеобразовательн")) return "ОБЩ";
+  if(k.includes("иностран") || k.includes("англ")) return "АНГЛ";
   return null;
 }
 
@@ -365,6 +366,7 @@ function renderCalcPanel(){
       <div class="calc-field"><label>ЕСТ</label><input type="number" step="0.01" id="calcЕСТ" placeholder="—"></div>
       <div class="calc-field"><label>ГУМ</label><input type="number" step="0.01" id="calcГУМ" placeholder="—"></div>
       <div class="calc-field"><label>ОБЩ</label><input type="number" step="0.01" id="calcОБЩ" placeholder="—"></div>
+      <div class="calc-field"><label>АНГЛ</label><input type="number" step="0.01" id="calcАНГЛ" placeholder="—"></div>
       <button class="calc-submit" onclick="runCalculator()">Рассчитать</button>
     </div>
     <div class="calc-results" id="calcResults"></div>
@@ -379,6 +381,11 @@ async function runCalculator(){
   };
   const provided = {};
   Object.entries(inputs).forEach(([k,v]) => { if(v !== "" && !isNaN(parseFloat(v))) provided[k] = parseFloat(v); });
+
+  const englishVal = document.getElementById("calcАНГЛ").value;
+  if(englishVal !== "" && !isNaN(parseFloat(englishVal)) && parseFloat(englishVal) >= 60){
+    provided["АНГЛ"] = parseFloat(englishVal);
+  }
 
   const resultsEl = document.getElementById("calcResults");
   if(!Object.keys(provided).length){
