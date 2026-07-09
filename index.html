@@ -238,6 +238,61 @@
     color:var(--text-faint);
     font-size:12px;
   }
+
+  /* ===== Calculator ===== */
+  .calc-panel{
+    background:var(--bg-surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:16px 18px;
+    margin-bottom:30px;
+  }
+  .calc-title{
+    font-family:var(--font-display);
+    font-size:16px;
+    font-weight:600;
+    margin-bottom:4px;
+  }
+  .calc-sub{font-size:12.5px; color:var(--text-muted); margin-bottom:14px;}
+  .calc-fields{display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;}
+  .calc-field{display:flex; flex-direction:column; gap:5px;}
+  .calc-field label{font-family:var(--font-mono); font-size:11px; color:var(--accent-gold); text-transform:uppercase;}
+  .calc-field input{
+    background:var(--bg-surface-2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    color:var(--text-primary);
+    font-family:var(--font-mono);
+    font-size:14px;
+    padding:8px 10px;
+    width:100px;
+  }
+  .calc-field input:focus{outline:none; border-color:var(--accent-gold-dim);}
+  .calc-submit{
+    background:var(--accent-gold);
+    color:#1B1508;
+    border:none;
+    border-radius:8px;
+    padding:9px 18px;
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:13.5px;
+    cursor:pointer;
+  }
+  .calc-submit:hover{opacity:0.92;}
+  .calc-results{margin-top:16px;}
+  .calc-result-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:9px 12px;
+    border-radius:8px;
+    margin-bottom:5px;
+    font-size:13px;
+  }
+  .calc-result-row.pass{background:var(--accent-pass-bg); border-left:3px solid var(--accent-pass);}
+  .calc-result-row.fail{background:var(--accent-fail-bg); border-left:3px solid var(--accent-fail);}
+  .calc-result-name{cursor:pointer;}
+  .calc-result-name:hover{color:var(--accent-gold);}
+  .calc-result-meta{font-family:var(--font-mono); font-size:11.5px; color:var(--text-muted); white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -294,6 +349,90 @@ async function loadDepartments(){
   return data;
 }
 
+function detectCategory(scoreKey){
+  const k = scoreKey.toLowerCase();
+  if(k.includes("гуманитар")) return "ГУМ";
+  if(k.includes("естественно")) return "ЕСТ";
+  if(k.includes("общеобразовательн")) return "ОБЩ";
+  return null;
+}
+
+function renderCalcPanel(){
+  return `<div class="calc-panel">
+    <div class="calc-title">Куда я прохожу прямо сейчас?</div>
+    <div class="calc-sub">Введи свои баллы — покажем, в какие направления ты попадаешь в квоту по текущим заявкам (кроме спорта/искусства — там решает экзамен).</div>
+    <div class="calc-fields">
+      <div class="calc-field"><label>ЕСТ</label><input type="number" step="0.01" id="calcЕСТ" placeholder="—"></div>
+      <div class="calc-field"><label>ГУМ</label><input type="number" step="0.01" id="calcГУМ" placeholder="—"></div>
+      <div class="calc-field"><label>ОБЩ</label><input type="number" step="0.01" id="calcОБЩ" placeholder="—"></div>
+      <button class="calc-submit" onclick="runCalculator()">Рассчитать</button>
+    </div>
+    <div class="calc-results" id="calcResults"></div>
+  </div>`;
+}
+
+async function runCalculator(){
+  const inputs = {
+    "ЕСТ": document.getElementById("calcЕСТ").value,
+    "ГУМ": document.getElementById("calcГУМ").value,
+    "ОБЩ": document.getElementById("calcОБЩ").value,
+  };
+  const provided = {};
+  Object.entries(inputs).forEach(([k,v]) => { if(v !== "" && !isNaN(parseFloat(v))) provided[k] = parseFloat(v); });
+
+  const resultsEl = document.getElementById("calcResults");
+  if(!Object.keys(provided).length){
+    resultsEl.innerHTML = `<div style="color:var(--text-muted); font-size:13px; margin-top:8px;">Введи хотя бы один балл.</div>`;
+    return;
+  }
+  resultsEl.innerHTML = `<div style="color:var(--text-muted); font-size:13px; margin-top:8px;">Считаю…</div>`;
+
+  const {data: allApplicants} = await sb.from("applicants").select("department_id, scores");
+  const byDept = {};
+  (allApplicants || []).forEach(a => {
+    if(!byDept[a.department_id]) byDept[a.department_id] = [];
+    byDept[a.department_id].push(a.scores || {});
+  });
+
+  const results = [];
+  (departmentsCache || []).forEach(dep => {
+    if(dep.no_pass_status || dep.quota == null) return;
+    const deptApplicants = byDept[dep.id] || [];
+    if(!deptApplicants.length) return;
+
+    let matchedKey = null, category = null;
+    for(const scores of deptApplicants){
+      for(const key of Object.keys(scores)){
+        const cat = detectCategory(key);
+        if(cat && provided.hasOwnProperty(cat)){ matchedKey = key; category = cat; break; }
+      }
+      if(matchedKey) break;
+    }
+    if(!matchedKey) return;
+
+    const enteredScore = provided[category];
+    const higherCount = deptApplicants.filter(s => (s[matchedKey] || 0) > enteredScore).length;
+    const projectedRank = higherCount + 1;
+    const passes = projectedRank <= dep.quota;
+
+    results.push({dep, category, projectedRank, passes});
+  });
+
+  if(!results.length){
+    resultsEl.innerHTML = `<div style="color:var(--text-muted); font-size:13px; margin-top:8px;">Не нашёл направлений с данными по введённым типам баллов.</div>`;
+    return;
+  }
+
+  results.sort((a,b) => (a.passes === b.passes) ? 0 : (a.passes ? -1 : 1));
+
+  resultsEl.innerHTML = results.map(r => `
+    <div class="calc-result-row ${r.passes ? 'pass' : 'fail'}">
+      <div class="calc-result-name" onclick="location.hash='#/dep/${r.dep.id}'">${escapeHtml(r.dep.direction)} <span style="color:var(--text-faint); font-size:11.5px;">(${r.category})</span></div>
+      <div class="calc-result-meta">место ~${r.projectedRank} из ${r.dep.quota} ${r.passes ? '✅' : '❌'}</div>
+    </div>
+  `).join("");
+}
+
 function renderHome(departments){
   if(!departments.length){
     return `<div class="state-msg">Пока нет данных. Парсер ещё не запускался.</div>`;
@@ -310,7 +449,7 @@ function renderHome(departments){
   });
   document.getElementById("updatedAt").textContent = timeAgoLabel(maxUpdated);
 
-  let html = "";
+  let html = renderCalcPanel();
   Object.keys(groups).forEach(faculty => {
     html += `<div class="faculty-block">
       <div class="faculty-eyebrow">${escapeHtml(faculty)}</div>
