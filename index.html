@@ -288,7 +288,7 @@ function escapeHtml(str){
 }
 
 async function loadDepartments(){
-  const {data, error} = await sb.from("departments").select("*").order("faculty").order("direction");
+  const {data, error} = await sb.from("departments").select("*").order("id", {ascending: true});
   if(error){ console.error(error); return []; }
   departmentsCache = data;
   return data;
