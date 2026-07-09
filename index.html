@@ -366,7 +366,10 @@ function renderCalcPanel(){
       <div class="calc-field"><label>ЕСТ</label><input type="number" step="0.01" id="calcЕСТ" placeholder="—"></div>
       <div class="calc-field"><label>ГУМ</label><input type="number" step="0.01" id="calcГУМ" placeholder="—"></div>
       <div class="calc-field"><label>ОБЩ</label><input type="number" step="0.01" id="calcОБЩ" placeholder="—"></div>
-      <div class="calc-field"><label>АНГЛ</label><input type="number" step="0.01" id="calcАНГЛ" placeholder="—"></div>
+      <div class="calc-field" style="flex-direction:row; align-items:center; gap:7px;">
+        <input type="checkbox" id="calcАНГЛ" style="width:16px; height:16px;">
+        <label style="text-transform:none; font-family:var(--font-body); font-size:12.5px; color:var(--text-muted);">Есть проходной балл по иностранному языку</label>
+      </div>
       <button class="calc-submit" onclick="runCalculator()">Рассчитать</button>
     </div>
     <div class="calc-results" id="calcResults"></div>
@@ -382,10 +385,7 @@ async function runCalculator(){
   const provided = {};
   Object.entries(inputs).forEach(([k,v]) => { if(v !== "" && !isNaN(parseFloat(v))) provided[k] = parseFloat(v); });
 
-  const englishVal = document.getElementById("calcАНГЛ").value;
-  if(englishVal !== "" && !isNaN(parseFloat(englishVal)) && parseFloat(englishVal) >= 60){
-    provided["АНГЛ"] = parseFloat(englishVal);
-  }
+  const englishOk = document.getElementById("calcАНГЛ").checked;
 
   const resultsEl = document.getElementById("calcResults");
   if(!Object.keys(provided).length){
@@ -407,14 +407,15 @@ async function runCalculator(){
     const deptApplicants = byDept[dep.id] || [];
     if(!deptApplicants.length) return;
 
-    let matchedKey = null, category = null;
+    let matchedKey = null, category = null, requiresEnglish = false;
     for(const scores of deptApplicants){
       for(const key of Object.keys(scores)){
         const cat = detectCategory(key);
-        if(cat && provided.hasOwnProperty(cat)){ matchedKey = key; category = cat; break; }
+        if(cat === "АНГЛ"){ requiresEnglish = true; continue; }
+        if(cat && provided.hasOwnProperty(cat) && !matchedKey){ matchedKey = key; category = cat; }
       }
-      if(matchedKey) break;
     }
+    if(requiresEnglish && !englishOk) return;
     if(!matchedKey) return;
 
     const enteredScore = provided[category];
