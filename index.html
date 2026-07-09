@@ -323,6 +323,7 @@ const SUPABASE_KEY = "sb_publishable_TdOUCAG3Ayj-LjLQrZHYQA_62m7VnnS";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const PHOTO_BASE = "https://abiturient.manas.edu.kg/page/uploads/photo/";
+const SHOW_PHOTOS = false; // поставь true, если захочешь вернуть фото
 
 let departmentsCache = null;
 
@@ -516,7 +517,7 @@ async function loadDepartmentDetail(id){
     const photoEntry = photosMap[a.reg_number];
     const hidden = photoEntry && photoEntry.hidden;
     const customUrl = photoEntry && photoEntry.custom_photo_url;
-    const photoUrl = hidden ? null : (customUrl || (PHOTO_BASE + a.reg_number + ".jpg"));
+    const photoUrl = (!SHOW_PHOTOS || hidden) ? null : (customUrl || (PHOTO_BASE + a.reg_number + ".jpg"));
 
     let statusClass = "";
     if(!dep.no_pass_status && dep.quota != null && a.rank != null){
